@@ -16,6 +16,9 @@
             android:id="@+id/item_image"
             android:layout_width="match_parent"
             android:layout_height="@dimen/catalog_item_image_height"
+            android:layout_marginLeft="@dimen/catalog_item_image_spacing"
+            android:layout_marginRight="@dimen/catalog_item_image_spacing"
+            android:layout_marginTop="@dimen/catalog_item_image_spacing"
             android:contentDescription="@string/item_image_description"
             android:scaleType="centerCrop" />
 

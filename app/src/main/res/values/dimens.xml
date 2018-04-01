@@ -6,6 +6,7 @@
     <dimen name="catalog_item_spacing">4dp</dimen>
     <dimen name="item_image_text_spacing">28dp</dimen>
     <dimen name="compound_image_padding">8dp</dimen>
+    <dimen name="catalog_item_image_spacing">1dp</dimen>
 
     <!-- View size. -->
     <dimen name="image_container_height">264dp</dimen>
