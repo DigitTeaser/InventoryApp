@@ -127,6 +127,12 @@ public class InventoryProvider extends ContentProvider {
      * @return the new content URI for that specific row in the database.
      */
     private Uri insertItem(Uri uri, ContentValues contentValues) {
+        // Check that the image is not null.
+        String image = contentValues.getAsString(InventoryEntry.COLUMN_ITEM_IMAGE);
+        if (image == null) {
+            throw new IllegalArgumentException("Item requires an image.");
+        }
+
         // Check that the name is not null.
         String name = contentValues.getAsString(InventoryEntry.COLUMN_ITEM_NAME);
         if (name == null) {
@@ -199,6 +205,15 @@ public class InventoryProvider extends ContentProvider {
         // If there are no values to update, return early with 0 which means no rows are updated.
         if (contentValues.size() == 0) {
             return 0;
+        }
+
+        // If the {@link InventoryEntry#COLUMN_ITEM_IMAGE} key is present,
+        // check that the image value is not null.
+        if (contentValues.containsKey(InventoryEntry.COLUMN_ITEM_IMAGE)) {
+            String image = contentValues.getAsString(InventoryEntry.COLUMN_ITEM_IMAGE);
+            if (image == null) {
+                throw new IllegalArgumentException("Item requires a name.");
+            }
         }
 
         // If the {@link InventoryEntry#COLUMN_ITEM_NAME} key is present,

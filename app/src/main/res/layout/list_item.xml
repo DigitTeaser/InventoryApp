@@ -15,7 +15,7 @@
         <ImageView
             android:id="@+id/item_image"
             android:layout_width="match_parent"
-            android:layout_height="120dp"
+            android:layout_height="@dimen/catalog_item_image_height"
             android:contentDescription="@string/item_image_description"
             android:scaleType="centerCrop" />
 
@@ -23,7 +23,7 @@
             android:id="@+id/item_name"
             style="@style/CatalogTextViewStyle"
             android:ellipsize="end"
-            android:maxLines="2"
+            android:maxLines="3"
             android:paddingTop="@dimen/item_image_text_spacing"
             android:textColor="@android:color/black"
             android:textSize="@dimen/item_name_text_size" />
