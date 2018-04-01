@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -14,6 +15,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.example.android.inventoryapp.data.InventoryContract.InventoryEntry;
 
 public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.MyViewHolder> {
@@ -38,8 +40,9 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.MyVi
         mOnItemClickListener = onItemClickListener;
     }
 
+    @NonNull
     @Override
-    public InventoryAdapter.MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public InventoryAdapter.MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View itemView =
                 LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item, parent, false);
         final MyViewHolder myViewHolder = new MyViewHolder(itemView);
@@ -60,7 +63,7 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.MyVi
     }
 
     @Override
-    public void onBindViewHolder(InventoryAdapter.MyViewHolder holder, final int position) {
+    public void onBindViewHolder(@NonNull final InventoryAdapter.MyViewHolder holder, int position) {
         //  Need to move cursor manually.
         if (mCursor.moveToPosition(position)) {
             // Find the necessary columns of inventory attributes.
@@ -80,12 +83,7 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.MyVi
             final long numberSold = mCursor.getLong(numberSoldColumnIndex);
 
             // Set the values to the views.
-            if (imageUriString.equals(InventoryEntry.NO_IMAGE_AVAILABLE_URI.toString())) {
-                // If URI points to drawable no_image_available, then set it to ImageView.
-                holder.imageView.setImageResource(R.drawable.no_image_available);
-            } else {
-//                holder.imageView.setImageURI(Uri.parse(imageUriString));
-            }
+            Glide.with(mContext).load(imageUriString).into(holder.imageView);
             holder.nameTextView.setText(nameString);
             holder.priceTextView.setText(
                     mContext.getString(R.string.item_price, Double.valueOf(priceString)));
@@ -96,29 +94,42 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.MyVi
             holder.fab.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    if (numberRemaining > 0) {
-                        // If the item has remaining stocks, then update the numbers.
-                        ContentValues values = new ContentValues();
-                        values.put(InventoryEntry.COLUMN_ITEM_NUMBER_SOLD, numberSold + 1);
-                        values.put(InventoryEntry.COLUMN_ITEM_NUMBER_REMAINING, numberRemaining - 1);
-
-                        Uri currentItemUri = ContentUris.withAppendedId(
-                                InventoryEntry.CONTENT_URI, getItemId(position));
-
-                        int rowAffected = mContext.getContentResolver().update(
-                                currentItemUri, values, null, null);
-
-                        if (rowAffected == 0) {
-                            // If no rows were affected, then there was an error with the update.
-                            Toast.makeText(mContext, mContext.getString(R.string.toast_update_failed),
-                                    Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        Toast.makeText(mContext, mContext.getString(R.string.toast_out_of_stock),
-                                Toast.LENGTH_SHORT).show();
-                    }
+                    // Call a helper method to update quantity.
+                    updateQuantity(getItemId(holder.getAdapterPosition()),
+                            numberSold, numberRemaining);
                 }
             });
+        }
+    }
+
+    /**
+     * Helper method that update item quantity when the selling fab was clicked.
+     *
+     * @param id              of item in database whose quantity need to update.
+     * @param numberSold      of item before adding one to it.
+     * @param numberRemaining of item before minus one to it.
+     */
+    private void updateQuantity(long id, long numberSold, long numberRemaining) {
+        if (numberRemaining > 0) {
+            // If the item has remaining stocks, then update the numbers.
+            ContentValues values = new ContentValues();
+            values.put(InventoryEntry.COLUMN_ITEM_NUMBER_SOLD, numberSold + 1);
+            values.put(InventoryEntry.COLUMN_ITEM_NUMBER_REMAINING, numberRemaining - 1);
+
+            Uri currentItemUri = ContentUris.withAppendedId(
+                    InventoryEntry.CONTENT_URI, id);
+
+            int rowAffected = mContext.getContentResolver().update(
+                    currentItemUri, values, null, null);
+
+            if (rowAffected == 0) {
+                // If no rows were affected, then there was an error with the update.
+                Toast.makeText(mContext, mContext.getString(R.string.toast_update_failed),
+                        Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(mContext, mContext.getString(R.string.toast_out_of_stock),
+                    Toast.LENGTH_SHORT).show();
         }
     }
 

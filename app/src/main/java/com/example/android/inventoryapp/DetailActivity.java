@@ -39,6 +39,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.example.android.inventoryapp.data.InventoryContract.InventoryEntry;
 
 import java.io.File;
@@ -390,12 +391,8 @@ public class DetailActivity extends AppCompatActivity
                     }
                     break;
             }
-            if (mLatestItemImageUri != null) {
-                // Set the image URI to ImageView.
-                mImageView.setImageBitmap(
-                        ImageUtils.decodeScaledBitmap(this, mLatestItemImageUri,
-                                ImageUtils.getImageViewDimension(mImageView)));
-            }
+            // Set the image that URI points to using Glide.
+            Glide.with(this).load(mLatestItemImageUri).into(mImageView);
         } else if (mCurrentPhotoPath != null) {
             // When user return from camera app without actually taking a photo,
             // then delete the unused image file.
@@ -744,12 +741,7 @@ public class DetailActivity extends AppCompatActivity
             mQuantityEditText.setText(String.valueOf(mCurrentItemNumberRemaining));
             mPriceEditText.setText(mCurrentItemPrice);
 
-            if (mCurrentItemImage.equals(InventoryEntry.NO_IMAGE_AVAILABLE_URI.toString())) {
-                // If URI points to drawable no_image_available, then set it to ImageView.
-                mImageView.setImageResource(R.drawable.no_image_available);
-            } else {
-                mImageView.setImageURI(Uri.parse(mCurrentItemImage));
-            }
+            Glide.with(this).load(mCurrentItemImage).into(mImageView);
         }
     }
 
