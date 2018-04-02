@@ -15,7 +15,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.CenterCrop;
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.example.android.inventoryapp.data.InventoryContract.InventoryEntry;
 
 public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.MyViewHolder> {
@@ -83,7 +84,10 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.MyVi
             final long numberSold = mCursor.getLong(numberSoldColumnIndex);
 
             // Set the values to the views.
-            Glide.with(mContext).load(imageUriString).into(holder.imageView);
+            GlideApp.with(mContext).load(imageUriString)
+                    .transforms(new CenterCrop(), new RoundedCorners(
+                            (int) mContext.getResources().getDimension(R.dimen.background_corner_radius)))
+                    .into(holder.imageView);
             holder.nameTextView.setText(nameString);
             holder.priceTextView.setText(
                     mContext.getString(R.string.item_price, Double.valueOf(priceString)));

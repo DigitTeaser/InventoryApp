@@ -11,7 +11,7 @@ import android.content.Loader;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Build;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -39,16 +39,21 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.CenterCrop;
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.example.android.inventoryapp.data.InventoryContract.InventoryEntry;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 
 public class DetailActivity extends AppCompatActivity
         implements LoaderManager.LoaderCallbacks<Cursor>,
@@ -298,7 +303,7 @@ public class DetailActivity extends AppCompatActivity
     /**
      * Helper method that create a temporary image {@link File} for the camera {@link Intent}.
      */
-    private File createImageFile() throws IOException {
+    private File createCameraImageFile() throws IOException {
         // Create a collision-resistant image file name.
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                 .format(new Date());
@@ -331,7 +336,7 @@ public class DetailActivity extends AppCompatActivity
             // Create the File where the image should save at.
             File imageFile = null;
             try {
-                imageFile = createImageFile();
+                imageFile = createCameraImageFile();
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Error creating the File " + e);
             }
@@ -346,6 +351,25 @@ public class DetailActivity extends AppCompatActivity
     }
 
     /**
+     * Helper method that create a temporary image {@link File}
+     * for copying image which user select from gallery.
+     */
+    private File createCopyImageFile() throws IOException {
+        // Create a collision-resistant image file name.
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+                .format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        // Give the image file a storage directory, which remain private to the app only.
+        File storageDirectory = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        // Return a temporary file according to the attributes above.
+        return File.createTempFile(
+                imageFileName,      /* prefix    */
+                ".jpg",             /* suffix    */
+                storageDirectory    /* directory */
+        );
+    }
+
+    /**
      * Implements {@link ImageChooserDialogFragment.ImageChooserDialogListener} method,
      * handles the image chooser with gallery action here.
      */
@@ -353,13 +377,7 @@ public class DetailActivity extends AppCompatActivity
     public void onDialogGalleryClick(DialogFragment dialog) {
         // Intent to gallery app.
         Intent selectPictureIntent = new Intent();
-        // Use Storage Access Framework in Android 4.4 (API level 19) and above,
-        // for the sake of permission for reading files from content" URI.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            selectPictureIntent.setAction(Intent.ACTION_OPEN_DOCUMENT);
-        } else {
-            selectPictureIntent.setAction(Intent.ACTION_GET_CONTENT);
-        }
+        selectPictureIntent.setAction(Intent.ACTION_GET_CONTENT);
         // Filter to show only images, using the image MIME data type.
         selectPictureIntent.setType("image/*");
         if (selectPictureIntent.resolveActivity(getPackageManager()) != null) {
@@ -370,35 +388,55 @@ public class DetailActivity extends AppCompatActivity
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
         if (resultCode == RESULT_OK) {
+            // If users choose image one more time, delete the previous unwanted file first.
+            deleteFile();
+
             switch (requestCode) {
                 case REQUEST_IMAGE_CAPTURE:
                     // Get the image file: URI from file according to the path.
                     mLatestItemImageUri = Uri.fromFile(new File(mCurrentPhotoPath));
+                    // Set the image that URI points to using Glide.
+                    GlideApp.with(this).load(mLatestItemImageUri)
+                            .transforms(new CenterCrop(), new RoundedCorners(
+                                    (int) getResources().getDimension(R.dimen.background_corner_radius)))
+                            .into(mImageView);
                     // After using the path, set it to null.
                     // So that user return from gallery app but didn't select a picture,
                     // it will not delete a image file.
                     mCurrentPhotoPath = null;
                     break;
                 case REQUEST_IMAGE_SELECT:
-                    mLatestItemImageUri = intent.getData();
-                    // Persist read permission in Android API level 19 (KitKat) and above.
-                    // Otherwise, the permission lost after device rebooted.
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                        int takeFlags = intent.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION;
-                        // Check for the freshest data.
-                        getContentResolver().
-                                takePersistableUriPermission(mLatestItemImageUri, takeFlags);
-                    }
+                    // Get content: URI from intent data.
+                    Uri contentUri = intent.getData();
+                    // Set the image that URI points to using Glide.
+                    GlideApp.with(this).load(contentUri)
+                            .transforms(new CenterCrop(), new RoundedCorners(
+                                    (int) getResources().getDimension(R.dimen.background_corner_radius)))
+                            .into(mImageView);
+
+                    // Copy image file in a background thread.
+                    new copyImageFileTask().execute(contentUri);
                     break;
             }
-            // Set the image that URI points to using Glide.
-            Glide.with(this).load(mLatestItemImageUri).into(mImageView);
         } else if (mCurrentPhotoPath != null) {
             // When user return from camera app without actually taking a photo,
             // then delete the unused image file.
             File file = new File(mCurrentPhotoPath);
             if (file.delete()) {
                 Toast.makeText(this, android.R.string.cancel, Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * Helper method that delete the unwanted file.
+     */
+    private void deleteFile() {
+        // If users choose image one more time, delete the previous unwanted file first.
+        if (mLatestItemImageUri != null) {
+            File file = new File(mLatestItemImageUri.getPath());
+            if (file.delete()) {
+                Log.v(LOG_TAG, "Previous file deleted.");
             }
         }
     }
@@ -468,8 +506,7 @@ public class DetailActivity extends AppCompatActivity
                 showDeleteConfirmationDialog();
                 return true;
             case android.R.id.home:
-                // If there are NO unsaved changes or NO contents at all,
-                // navigating up to parent activity, return early.
+                // If there are NO unsaved changes, navigating up to parent activity, return early.
                 if (!itemHasChanged()) {
                     NavUtils.navigateUpFromSameTask(this);
                     return true;
@@ -479,6 +516,8 @@ public class DetailActivity extends AppCompatActivity
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int i) {
+                                // Delete the unwanted file.
+                                deleteFile();
                                 // User clicked "Discard" button, navigate to parent activity.
                                 NavUtils.navigateUpFromSameTask(DetailActivity.this);
                             }
@@ -495,7 +534,7 @@ public class DetailActivity extends AppCompatActivity
      */
     @Override
     public void onBackPressed() {
-        // If there are NO unsaved changes or NO contents at all,
+        // If there are NO unsaved changes at all,
         // keep the behavior by default and return early.
         if (!itemHasChanged()) {
             super.onBackPressed();
@@ -506,6 +545,8 @@ public class DetailActivity extends AppCompatActivity
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
+                        // Delete the unwanted file.
+                        deleteFile();
                         // User clicked "Discard" button, close the current activity.
                         finish();
                     }
@@ -741,7 +782,10 @@ public class DetailActivity extends AppCompatActivity
             mQuantityEditText.setText(String.valueOf(mCurrentItemNumberRemaining));
             mPriceEditText.setText(mCurrentItemPrice);
 
-            Glide.with(this).load(mCurrentItemImage).into(mImageView);
+            GlideApp.with(this).load(mCurrentItemImage)
+                    .transforms(new CenterCrop(), new RoundedCorners(
+                            (int) getResources().getDimension(R.dimen.background_corner_radius)))
+                    .into(mImageView);
         }
     }
 
@@ -768,9 +812,9 @@ public class DetailActivity extends AppCompatActivity
     private boolean itemHasChanged() {
         if (mCurrentItemUri == null) {
             return mImageView.getDrawable() != null
-                    || !TextUtils.isEmpty(mNameEditText.getText())
-                    || !TextUtils.isEmpty(mQuantityEditText.getText())
-                    || !TextUtils.isEmpty(mPriceEditText.getText());
+                    || !TextUtils.isEmpty(mNameEditText.getText().toString().trim())
+                    || !TextUtils.isEmpty(mQuantityEditText.getText().toString().trim())
+                    || !TextUtils.isEmpty(mPriceEditText.getText().toString().trim());
         } else {
             return mLatestItemImageUri != null
                     && !mLatestItemImageUri.toString().equals(mCurrentItemImage)
@@ -778,6 +822,52 @@ public class DetailActivity extends AppCompatActivity
                     || !mQuantityEditText.getText().toString()
                     .equals(String.valueOf(mCurrentItemNumberRemaining))
                     || !mPriceEditText.getText().toString().equals(mCurrentItemPrice);
+        }
+    }
+
+    /**
+     * Inner class which is an {@link AsyncTask} that copy image which user select from gallery
+     * in a background thread.
+     */
+    private class copyImageFileTask extends AsyncTask<Uri, Void, Uri> {
+        @Override
+        protected Uri doInBackground(Uri... uris) {
+            // If URI is null, bail early.
+            if (uris[0] == null) {
+                return null;
+            }
+
+            try {
+                // Create the target file for copy using a helper method.
+                File file = createCopyImageFile();
+                // Load the input stream from the content: URI.
+                InputStream input = getContentResolver().openInputStream(uris[0]);
+                // Use output stream to write data into the file.
+                OutputStream output = new FileOutputStream(file);
+                byte[] buffer = new byte[4 * 1024];
+                int bytesRead;
+                while ((bytesRead = input.read(buffer)) > 0) {
+                    output.write(buffer, 0, bytesRead);
+                }
+                // Close both input and output stream.
+                input.close();
+                output.close();
+
+                // Return the file: URI.
+                return Uri.fromFile(file);
+            } catch (IOException e) {
+                Log.e(LOG_TAG, "Error creating the File " + e);
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Uri uri) {
+            if (uri != null) {
+                // Set the file: URI.
+                mLatestItemImageUri = uri;
+            }
         }
     }
 
