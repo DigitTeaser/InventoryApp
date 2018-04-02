@@ -2,9 +2,15 @@
 
 An Inventory Management App.
 
-04/01/18: Initiate Commit. (This could be a joke:')
+**04/02/18: Use Glide generated API to display round corner image.**
 
-<img src="Pictures/empty_view.png" width="300px"> <img src="Pictures/empty_editor.png" width="300px">
+<img src="Pictures/updated_list.png" width="300px"> <img src="Pictures/updated_image.png" width="300px">
+
+Images displayed in the `RecyclerView` list and the image edit field of `DetailActivity` now have rounded corners. They also has `1dp` offset to the border so that the lines of the border won't be covered.
+
+**04/01/18: Initiate Commit. (This could be a joke:')**
+
+<img src="Pictures/empty_view.png" width="300px"> <img src="Pictures/empty_editor.png" width="300px"> 
 
 1. The initiate page is a blank `CatalogActivity` but a empty view, which tells users that currently "Inventory is empty".
 2. When users click the "+" button in AppBar at the top right corner of screen, they will be brought to `DetailActivity` where they input image, name, quantity and price of a item and commit them to `SQLiteDatabase`.
@@ -59,7 +65,7 @@ An Inventory Management App.
 
 In `DetailActivity` EDIT mode, users can click the "Delete the Item" button in the overflow menu in AppBar, and a `AlertDialog` will popup to let users confirm the deletion. If users click the "OK" button in the warning dialog, then the item will be deleted from the database and the app return to `CatalogActivity`.
 
-**A random list in `CatalogActivity` should look like this.**
+A random list in `CatalogActivity` should look like this.
 
 <img src="Pictures/item_list.png" width="300px">
 
